@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iskad — Floorplan Editor</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar">
+      <div class="tool-group">
+        <label>Tool</label>
+        <button class="tool-btn active" data-tool="draw">Draw Wall</button>
+        <button class="tool-btn" data-tool="door">Place Door</button>
+        <button class="tool-btn" data-tool="damage">Mark Damage</button>
+        <button class="tool-btn" data-tool="prop">Props</button>
+        <button class="tool-btn" data-tool="tile">Paint Ground</button>
+        <button class="tool-btn" data-tool="select">Select</button>
+        <button class="tool-btn" data-tool="erase">Erase</button>
+      </div>
+
+      <div class="tool-group" id="wall-type-group">
+        <label>Wall Type</label>
+        <button class="type-btn active" data-wall-type="drywall">Drywall</button>
+        <button class="type-btn" data-wall-type="concrete">Concrete</button>
+      </div>
+
+      <div class="tool-group hidden" id="damage-color-group">
+        <label>Damage Color</label>
+        <button class="damage-btn active" data-damage="pink">Pink</button>
+        <button class="damage-btn" data-damage="blue">Blue</button>
+        <button class="damage-btn" data-damage="green">Green</button>
+      </div>
+
+      <div class="tool-group hidden" id="prop-panel">
+        <label>Props</label>
+        <!-- buttons generated dynamically by main.ts -->
+      </div>
+
+      <div class="tool-group hidden" id="tile-color-group">
+        <label>Tile Color</label>
+        <button class="tile-btn active" data-tile-color="red">Red</button>
+        <button class="tile-btn" data-tile-color="orange">Orange</button>
+        <button class="tile-btn" data-tile-color="yellow">Yellow</button>
+        <button class="tile-btn" data-tile-color="green">Green</button>
+        <button class="tile-btn" data-tile-color="blue">Blue</button>
+        <button class="tile-btn" data-tile-color="purple">Purple</button>
+      </div>
+
+      <div class="tool-group">
+        <label>Actions</label>
+        <button id="btn-undo">Undo</button>
+        <button id="btn-redo">Redo</button>
+        <button id="btn-clear">Clear All</button>
+        <button id="btn-save">Save</button>
+        <button id="btn-load">Load</button>
+      </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="statusbar">
+      <span id="status-tool">Tool: Draw Wall</span>
+      <span id="status-type">Type: Drywall</span>
+      <span id="status-coords">0, 0</span>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

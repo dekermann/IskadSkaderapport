@@ -1,0 +1,122 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Toolbar */
+#toolbar {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.tool-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.tool-group label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #888;
+  margin-right: 4px;
+  letter-spacing: 0.5px;
+}
+
+.tool-group.hidden {
+  display: none;
+}
+
+#toolbar button {
+  padding: 6px 12px;
+  border: 1px solid #0f3460;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#toolbar button:hover {
+  background: #0f3460;
+}
+
+#toolbar button.active {
+  background: #e94560;
+  border-color: #e94560;
+  color: #fff;
+}
+
+/* Canvas */
+#canvas {
+  flex: 1;
+  cursor: crosshair;
+  background: #f5f0eb;
+}
+
+/* Status bar */
+#statusbar {
+  display: flex;
+  gap: 24px;
+  padding: 4px 12px;
+  background: #16213e;
+  border-top: 1px solid #0f3460;
+  font-size: 12px;
+  color: #888;
+}
+
+/* Wall type indicators on buttons */
+.type-btn[data-wall-type="drywall"]::before  { content: ''; display: inline-block; width: 12px; height: 8px; border-top: 2px solid #333; border-bottom: 2px solid #333; margin-right: 4px; vertical-align: middle; }
+.type-btn[data-wall-type="concrete"]::before { content: ''; display: inline-block; width: 12px; height: 6px; background: #111; border-radius: 1px; margin-right: 4px; vertical-align: middle; }
+
+/* Damage color indicators */
+.damage-btn[data-damage="pink"]::before  { content: ''; display: inline-block; width: 10px; height: 10px; background: #ff69b4; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.damage-btn[data-damage="blue"]::before  { content: ''; display: inline-block; width: 10px; height: 10px; background: #4488ff; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.damage-btn[data-damage="green"]::before { content: ''; display: inline-block; width: 10px; height: 10px; background: #44cc44; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+/* Prop panel */
+#prop-panel {
+  flex-wrap: wrap;
+  max-width: 480px;
+}
+
+.prop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px !important;
+}
+
+.prop-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Tile color indicators */
+.tile-btn[data-tile-color="red"]::before    { content: ''; display: inline-block; width: 10px; height: 10px; background: #f8aaaa; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.tile-btn[data-tile-color="orange"]::before { content: ''; display: inline-block; width: 10px; height: 10px; background: #fdd5a0; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.tile-btn[data-tile-color="yellow"]::before { content: ''; display: inline-block; width: 10px; height: 10px; background: #fff5a0; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.tile-btn[data-tile-color="green"]::before  { content: ''; display: inline-block; width: 10px; height: 10px; background: #b0f0b0; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.tile-btn[data-tile-color="blue"]::before   { content: ''; display: inline-block; width: 10px; height: 10px; background: #a0d0ff; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.tile-btn[data-tile-color="purple"]::before { content: ''; display: inline-block; width: 10px; height: 10px; background: #dbb0f0; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
