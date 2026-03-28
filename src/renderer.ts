@@ -1,4 +1,4 @@
-import { Wall, Point, WallType, DamageSection, Door, PlacedProp, GroundTile, propPixelSize, getPropDef, DAMAGE_COLOR_VALUES, TILE_COLOR_VALUES, GRID_SIZE } from './types';
+import { Wall, Point, WallType, DamageSection, Door, PlacedProp, GroundTile, propPixelSize, getPropDef, DAMAGE_COLOR_VALUES, TILE_COLOR_VALUES, GRID_SIZE, PROP_INSET } from './types';
 
 const SNAP_DISTANCE = 12;
 const ENDPOINT_SNAP = 2; // how close endpoints must be to count as "meeting"
@@ -216,8 +216,12 @@ function drawDoor(ctx: CanvasRenderingContext2D, wall: Wall, door: Door) {
   const pStart = lerpWall(wall, door.tStart);
   const pEnd = lerpWall(wall, door.tEnd);
 
-  const dx = pEnd.x - pStart.x;
-  const dy = pEnd.y - pStart.y;
+  // Determine hinge and free end based on hingeSide
+  const hinge = door.hingeSide === 'start' ? pStart : pEnd;
+  const free = door.hingeSide === 'start' ? pEnd : pStart;
+
+  const dx = free.x - hinge.x;
+  const dy = free.y - hinge.y;
   const doorLen = Math.hypot(dx, dy);
   if (doorLen < 1) return;
 
@@ -246,9 +250,8 @@ function drawDoor(ctx: CanvasRenderingContext2D, wall: Wall, door: Door) {
   ctx.lineTo(pEnd.x - n.x * hw, pEnd.y - n.y * hw);
   ctx.stroke();
 
-  // Draw arc swing from the hinge point (tStart side)
+  // Draw arc swing from the hinge point
   const side = door.swingSide;
-  // Hinge is at pStart; the door swings from pStart→pEnd direction to swing outward
   const swingAngle = Math.atan2(dy, dx);
   const arcStartAngle = swingAngle;
   const arcEndAngle = Math.atan2(n.y * side, n.x * side);
@@ -266,19 +269,19 @@ function drawDoor(ctx: CanvasRenderingContext2D, wall: Wall, door: Door) {
   while (diff > Math.PI) diff -= 2 * Math.PI;
   while (diff < -Math.PI) diff += 2 * Math.PI;
   const ccw = diff < 0;
-  ctx.arc(pStart.x, pStart.y, doorLen, start, start + diff, ccw);
+  ctx.arc(hinge.x, hinge.y, doorLen, start, start + diff, ccw);
   ctx.stroke();
 
   // Draw the door leaf (straight line from hinge to arc end)
   const leafEnd = {
-    x: pStart.x + Math.cos(start + diff) * doorLen,
-    y: pStart.y + Math.sin(start + diff) * doorLen,
+    x: hinge.x + Math.cos(start + diff) * doorLen,
+    y: hinge.y + Math.sin(start + diff) * doorLen,
   };
   ctx.setLineDash([]);
   ctx.strokeStyle = '#555';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(pStart.x, pStart.y);
+  ctx.moveTo(hinge.x, hinge.y);
   ctx.lineTo(leafEnd.x, leafEnd.y);
   ctx.stroke();
 }
@@ -358,27 +361,264 @@ function drawDoorPreview(ctx: CanvasRenderingContext2D, wall: Wall, door: Door) 
   ctx.globalAlpha = 1;
 }
 
-/** Draw a placed prop on the canvas — gray fill, black outline, icon. */
+/** Draw a placed prop on the canvas with architectural-style icons. */
 function drawProp(ctx: CanvasRenderingContext2D, prop: PlacedProp, highlight = false) {
   const { w, h } = propPixelSize(prop);
+  // Offset by inset so prop centers within the grid cell
+  const x = prop.x + PROP_INSET;
+  const y = prop.y + PROP_INSET;
+  const def = getPropDef(prop.kind);
+  const rot = prop.rotation || 0;
 
-  // Fill
-  ctx.fillStyle = '#ddd';
-  ctx.fillRect(prop.x, prop.y, w, h);
+  ctx.save();
 
-  // Border
+  // Rotate around the center of the prop
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  ctx.translate(cx, cy);
+  ctx.rotate((rot * Math.PI) / 180);
+
+  // After rotation, draw in "unrotated" local coords.
+  // Use the inset dimensions so the prop fits inside walls.
+  const baseW = def.gw * prop.scaleW * GRID_SIZE - PROP_INSET * 2;
+  const baseH = def.gh * prop.scaleH * GRID_SIZE - PROP_INSET * 2;
+  const lx = -baseW / 2;
+  const ly = -baseH / 2;
+
+  // Common background + border
+  ctx.fillStyle = '#eee';
+  ctx.fillRect(lx, ly, baseW, baseH);
   ctx.strokeStyle = highlight ? '#00ccff' : '#222';
   ctx.lineWidth = highlight ? 2 : 1.5;
-  ctx.strokeRect(prop.x, prop.y, w, h);
+  ctx.strokeRect(lx, ly, baseW, baseH);
 
-  // Icon centered
-  const cx = prop.x + w / 2;
-  const cy = prop.y + h / 2;
-  ctx.font = `${Math.min(w, h) * 0.5}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  // Draw type-specific details in local coords
   ctx.fillStyle = '#222';
-  ctx.fillText(getPropDef(prop.kind).icon, cx, cy);
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1.2;
+
+  const kind = prop.kind;
+  if (kind === 'stove') {
+    drawStove(ctx, lx, ly, baseW, baseH);
+  } else if (kind === 'fridge') {
+    drawFridge(ctx, lx, ly, baseW, baseH);
+  } else if (kind === 'sink') {
+    drawSink(ctx, lx, ly, baseW, baseH);
+  } else if (kind === 'dishwasher') {
+    drawDishwasher(ctx, lx, ly, baseW, baseH);
+  } else if (kind === 'washer') {
+    drawWasher(ctx, lx, ly, baseW, baseH);
+  } else if (kind === 'toilet') {
+    drawToilet(ctx, lx, ly, baseW, baseH);
+  } else if (kind === 'shower') {
+    drawShower(ctx, lx, ly, baseW, baseH);
+  } else if (kind === 'bathtub') {
+    drawBathtub(ctx, lx, ly, baseW, baseH);
+  }
+
+  ctx.restore();
+}
+
+/** Stove: 4 burner circles in a 2x2 grid. */
+function drawStove(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const r = Math.min(w, h) * 0.16;
+  const padX = w * 0.28;
+  const padY = h * 0.28;
+  for (const [cx, cy] of [
+    [x + padX, y + padY],
+    [x + w - padX, y + padY],
+    [x + padX, y + h - padY],
+    [x + w - padX, y + h - padY],
+  ]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+/** Fridge: rectangle with horizontal divider line and small handle. */
+function drawFridge(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  // Divider line at ~35% from top (freezer/fridge split)
+  const divY = y + h * 0.35;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, divY);
+  ctx.lineTo(x + w - 2, divY);
+  ctx.stroke();
+  // Handle on right side
+  const hx = x + w * 0.82;
+  ctx.beginPath();
+  ctx.moveTo(hx, y + h * 0.12);
+  ctx.lineTo(hx, y + h * 0.28);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(hx, y + h * 0.45);
+  ctx.lineTo(hx, y + h * 0.85);
+  ctx.stroke();
+}
+
+/** Sink: oval basin inside the rectangle. */
+function drawSink(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const rx = w * 0.35;
+  const ry = h * 0.32;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Faucet dot at top center
+  ctx.beginPath();
+  ctx.arc(cx, y + h * 0.15, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Dishwasher: rectangle with horizontal lines (racks). */
+function drawDishwasher(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const pad = w * 0.12;
+  // Two horizontal rack lines
+  for (const frac of [0.38, 0.62]) {
+    const ly = y + h * frac;
+    ctx.beginPath();
+    ctx.moveTo(x + pad, ly);
+    ctx.lineTo(x + w - pad, ly);
+    ctx.stroke();
+  }
+  // Small handle at bottom
+  const hx1 = x + w * 0.35;
+  const hx2 = x + w * 0.65;
+  const hy = y + h * 0.85;
+  ctx.beginPath();
+  ctx.moveTo(hx1, hy);
+  ctx.lineTo(hx2, hy);
+  ctx.stroke();
+}
+
+/** Washer: large circle (drum) with small circle inside. */
+function drawWasher(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const cx = x + w / 2;
+  const cy = y + h * 0.55;
+  const r = Math.min(w, h) * 0.32;
+  // Door circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  // Inner drum
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2);
+  ctx.stroke();
+  // Control panel area at top
+  const panelY = y + h * 0.12;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + h * 0.22);
+  ctx.lineTo(x + w - 2, y + h * 0.22);
+  ctx.stroke();
+  // Small knob dots
+  for (const fx of [0.3, 0.5, 0.7]) {
+    ctx.beginPath();
+    ctx.arc(x + w * fx, panelY, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/** Toilet: oval seat viewed from above with tank rectangle at back. */
+function drawToilet(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  // Tank (rectangle at top)
+  const tankH = h * 0.25;
+  const tankPad = w * 0.1;
+  ctx.strokeRect(x + tankPad, y + 2, w - tankPad * 2, tankH);
+
+  // Bowl (oval)
+  const cx = x + w / 2;
+  const cy = y + tankH + (h - tankH) * 0.5;
+  const rx = w * 0.38;
+  const ry = (h - tankH) * 0.4;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Seat opening (smaller oval inside)
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + ry * 0.05, rx * 0.65, ry * 0.65, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** Shower: square with diagonal lines (water) and drain circle. */
+function drawShower(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  // Diagonal hatch lines to show floor
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x + 1, y + 1, w - 2, h - 2);
+  ctx.clip();
+  const spacing = Math.min(w, h) * 0.18;
+  for (let i = -10; i < 20; i++) {
+    const sx = x + i * spacing;
+    ctx.beginPath();
+    ctx.moveTo(sx, y);
+    ctx.lineTo(sx + h, y + h);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Drain circle in center
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  ctx.fillStyle = '#eee';
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.min(w, h) * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.min(w, h) * 0.1, 0, Math.PI * 2);
+  ctx.stroke();
+  // Drain dots
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Shower head in corner
+  ctx.beginPath();
+  ctx.arc(x + w * 0.18, y + h * 0.18, Math.min(w, h) * 0.08, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Bathtub: rounded rectangle with oval basin inside. */
+function drawBathtub(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  // Inner rounded basin
+  const pad = Math.min(w, h) * 0.12;
+  const bx = x + pad;
+  const by = y + pad;
+  const bw = w - pad * 2;
+  const bh = h - pad * 2;
+  const r = Math.min(bw, bh) * 0.3;
+  ctx.beginPath();
+  ctx.moveTo(bx + r, by);
+  ctx.lineTo(bx + bw - r, by);
+  ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+  ctx.lineTo(bx + bw, by + bh - r);
+  ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+  ctx.lineTo(bx + r, by + bh);
+  ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+  ctx.lineTo(bx, by + r);
+  ctx.quadraticCurveTo(bx, by, bx + r, by);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Faucet at one end
+  const fx = x + w * 0.15;
+  const fy = y + h * 0.5;
+  ctx.beginPath();
+  ctx.arc(fx, fy, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Drain at other end
+  const dx = x + w * 0.85;
+  const dy = y + h * 0.5;
+  ctx.beginPath();
+  ctx.arc(dx, dy, 2.5, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 /** Find a prop at a given point. */
@@ -394,6 +634,103 @@ export function findPropAt(props: PlacedProp[], p: Point): PlacedProp | null {
   return null;
 }
 
+// --------------- Prop handles ---------------
+
+const HANDLE_SIZE = 8;
+const HANDLE_HALF = HANDLE_SIZE / 2;
+const ROTATE_HANDLE_OFFSET = 18; // pixels above the prop
+
+export type HandleType = 'scale-tl' | 'scale-tr' | 'scale-bl' | 'scale-br' | 'scale-t' | 'scale-b' | 'scale-l' | 'scale-r' | 'rotate';
+
+interface HandlePos {
+  type: HandleType;
+  x: number;
+  y: number;
+}
+
+/** Get the handle positions for a prop (on the visual inset bounds). */
+export function getPropHandles(prop: PlacedProp): HandlePos[] {
+  const { w, h } = propPixelSize(prop);
+  const x = prop.x + PROP_INSET;
+  const y = prop.y + PROP_INSET;
+  return [
+    // Corner handles (uniform scale)
+    { type: 'scale-tl', x, y },
+    { type: 'scale-tr', x: x + w, y },
+    { type: 'scale-bl', x, y: y + h },
+    { type: 'scale-br', x: x + w, y: y + h },
+    // Edge handles (single-axis scale)
+    { type: 'scale-t', x: x + w / 2, y },
+    { type: 'scale-b', x: x + w / 2, y: y + h },
+    { type: 'scale-l', x, y: y + h / 2 },
+    { type: 'scale-r', x: x + w, y: y + h / 2 },
+    // Rotation
+    { type: 'rotate', x: x + w / 2, y: y - ROTATE_HANDLE_OFFSET },
+  ];
+}
+
+/** Check if a point hits a handle. Returns the handle type or null. */
+export function hitTestHandle(prop: PlacedProp, p: Point): HandleType | null {
+  const handles = getPropHandles(prop);
+  for (const h of handles) {
+    if (Math.abs(p.x - h.x) <= HANDLE_HALF + 2 && Math.abs(p.y - h.y) <= HANDLE_HALF + 2) {
+      return h.type;
+    }
+  }
+  return null;
+}
+
+/** Draw handles on a prop. */
+function drawPropHandles(ctx: CanvasRenderingContext2D, prop: PlacedProp) {
+  const handles = getPropHandles(prop);
+  for (const h of handles) {
+    if (h.type === 'rotate') {
+      // Draw line from prop center-top to rotate handle
+      const { w } = propPixelSize(prop);
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(prop.x + PROP_INSET + w / 2, prop.y + PROP_INSET);
+      ctx.lineTo(h.x, h.y);
+      ctx.stroke();
+
+      // Rotation circle
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Small arrow inside
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, 3, 0, Math.PI * 1.5);
+      ctx.stroke();
+    } else if (h.type.startsWith('scale-') && h.type.length === 7) {
+      // Edge handle (single letter: t, b, l, r) — small diamond
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+      ctx.save();
+      ctx.translate(h.x, h.y);
+      ctx.rotate(Math.PI / 4);
+      const s = HANDLE_SIZE * 0.7;
+      ctx.fillRect(-s / 2, -s / 2, s, s);
+      ctx.strokeRect(-s / 2, -s / 2, s, s);
+      ctx.restore();
+    } else {
+      // Corner scale handle — square
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(h.x - HANDLE_HALF, h.y - HANDLE_HALF, HANDLE_SIZE, HANDLE_SIZE);
+      ctx.strokeRect(h.x - HANDLE_HALF, h.y - HANDLE_HALF, HANDLE_SIZE, HANDLE_SIZE);
+    }
+  }
+}
+
 /** Draw a single ground tile. */
 function drawGroundTile(ctx: CanvasRenderingContext2D, tile: GroundTile) {
   ctx.fillStyle = TILE_COLOR_VALUES[tile.color];
@@ -404,6 +741,7 @@ export interface RenderState {
   walls: Wall[];
   props: PlacedProp[];
   tiles: GroundTile[];
+  backgroundImage: HTMLImageElement | null;
   highlightWall: Wall | null;
   highlightProp: PlacedProp | null;
   // Wall drawing preview
@@ -418,19 +756,30 @@ export interface RenderState {
   doorPreview: Door | null;
   // Prop drag preview
   dragProp: PlacedProp | null;
+  // Selected prop (shows handles)
+  selectedProp: PlacedProp | null;
 }
 
 /** Full render pass. */
-export function render(ctx: CanvasRenderingContext2D, state: RenderState) {
+export function render(ctx: CanvasRenderingContext2D, state: RenderState, opts?: { skipGrid?: boolean }) {
   const { width, height } = ctx.canvas;
   ctx.clearRect(0, 0, width, height);
+
+  // Background image (under everything)
+  if (state.backgroundImage) {
+    ctx.globalAlpha = 0.35;
+    ctx.drawImage(state.backgroundImage, 0, 0, width, height);
+    ctx.globalAlpha = 1;
+  }
 
   // Ground tiles first (under grid)
   for (const tile of state.tiles) {
     drawGroundTile(ctx, tile);
   }
 
-  drawGrid(ctx, width, height);
+  if (!opts?.skipGrid) {
+    drawGrid(ctx, width, height);
+  }
 
   for (const wall of state.walls) {
     const isHighlighted = state.highlightWall?.id === wall.id;
@@ -459,5 +808,10 @@ export function render(ctx: CanvasRenderingContext2D, state: RenderState) {
     ctx.globalAlpha = 0.6;
     drawProp(ctx, state.dragProp);
     ctx.globalAlpha = 1;
+  }
+
+  // Draw handles on selected prop (last, on top of everything)
+  if (state.selectedProp) {
+    drawPropHandles(ctx, state.selectedProp);
   }
 }

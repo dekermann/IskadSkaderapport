@@ -23,6 +23,8 @@ export interface Door {
   tEnd: number;
   /** Which side the door swings to (+1 or -1 relative to wall normal). */
   swingSide: 1 | -1;
+  /** Which end is the hinge: 'start' = tStart side, 'end' = tEnd side. */
+  hingeSide: 'start' | 'end';
 }
 
 export interface Wall {
@@ -62,8 +64,12 @@ export interface PlacedProp {
   /** Top-left corner, snapped to grid. */
   x: number;
   y: number;
-  /** Scale in grid units (1 = base size, 2 = double, etc.). */
-  scale: number;
+  /** Scale multiplier for width (in grid units). */
+  scaleW: number;
+  /** Scale multiplier for height (in grid units). */
+  scaleH: number;
+  /** Rotation in degrees: 0, 90, 180, 270. */
+  rotation: number;
 }
 
 export const PROP_CATALOG: PropDef[] = [
@@ -81,12 +87,16 @@ export function getPropDef(kind: PropKind): PropDef {
   return PROP_CATALOG.find(p => p.kind === kind)!;
 }
 
-/** Get pixel dimensions of a placed prop. */
+/** Inset in pixels per side so props fit inside walled cells (half of thickest wall). */
+export const PROP_INSET = 5;
+
+/** Get pixel dimensions of a placed prop (after rotation), inset to fit inside walls. */
 export function propPixelSize(prop: PlacedProp): { w: number; h: number } {
   const def = getPropDef(prop.kind);
+  const isRotated = prop.rotation === 90 || prop.rotation === 270;
   return {
-    w: def.gw * prop.scale * GRID_SIZE,
-    h: def.gh * prop.scale * GRID_SIZE,
+    w: (isRotated ? def.gh : def.gw) * (isRotated ? prop.scaleH : prop.scaleW) * GRID_SIZE - PROP_INSET * 2,
+    h: (isRotated ? def.gw : def.gh) * (isRotated ? prop.scaleW : prop.scaleH) * GRID_SIZE - PROP_INSET * 2,
   };
 }
 
