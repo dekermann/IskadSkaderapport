@@ -3,19 +3,22 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
+  },
   "dependencies": {
     "vite": "^8.0.3"
   },
   "devDependencies": {
-    "typescript": "^6.0.2"
+    "@cloudflare/vite-plugin": "^1.0.0",
+    "typescript": "^6.0.2",
+    "wrangler": "^4.0.0"
   }
 }
